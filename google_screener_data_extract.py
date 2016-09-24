@@ -1,24 +1,22 @@
 """
     Extract info from google finance stock screener.
     Author: Tan Kok Hua
-    Blog: simplypython@wordpress.com
-
-    Notes:
-        Make use of the google stock screener to retrieve all the data
-        To make sure all the data is retrieved, open the criterial of each to max.
-        As each time can only process 12 crteria, will have to make several calls to google finance and join the data.
-        
-        Some modification have to make to the json file download, there are some unicode that cannot be processed,
-        as they are not curcial to the data. \X are being replaced by ' '
+    Blog: simply-python.com
 
     Updates:
         Jun 01 2015: Add in rename columns name functions
         May 20 2015: Update mid url as txt file
 
     ToDo:
-        Change some of paramters names 
-    
-    
+        Change some of paramters names
+        divdidend str: %20%26%20%28dividend_yield%20%3E%3D%200%29%20%26%20%28dividend_yield%20%3C%3D%20248%29
+
+    Exchange str:
+    SGX (default)
+    NYSEMKT
+    OTCMKTS
+    NYSEARCA
+    NASDAQ
 
 """
 import os, re, sys, time, datetime, copy, calendar
@@ -36,11 +34,14 @@ class GoogleStockDataExtract(object):
 
         """
         ## url parameters for joining
-        self.target_url_start = 'https://www.google.com/finance?output=json&start=0&num=3000&noIL=1&q=[%28exchange%20%3D%3D%20%22SGX%22%29%20%26%20%28'
+        self.target_url_start = 'https://www.google.com/finance?output=json&start=0&num=3000&noIL=1&q=[%28exchange%20%3D%3D%20%22#$%22%29%20%26%20%28'
+        self.target_exchange = 'SGX' #default
+        #self.target_url_start = 'https://www.google.com/finance?output=json&start=0&num=3000&noIL=1&q=[%28exchange%20%3D%3D%20%22NASDAQ%22%29%20%26%20%28'
         self.target_url_end = ']&restype=company&ei=BjE7VZmkG8XwuASFn4CoDg'
         self.temp_url_mid = ''
         self.target_full_url = ''
-        self.mid_url_list_filepath = r'C:\pythonuserfiles\stock_data_extract\googlescreen_url.txt'
+        current_script_folder = os.path.dirname(os.path.realpath(__file__))
+        self.mid_url_list_filepath = os.path.join(current_script_folder,'googlescreen_url.txt')
 
         with open(self.mid_url_list_filepath, 'r') as f:
             url_data =f.readlines()
@@ -53,6 +54,20 @@ class GoogleStockDataExtract(object):
 
         ## Result dataframe
         self.result_google_ext_df = pandas.DataFrame()
+
+    @property
+    def target_exchange(self):
+        return self._target_exchange
+
+    @target_exchange.setter
+    def target_exchange(self, exchange):
+        """ Will also set to the target url start string.
+            Temporary set to SGX and NASDAQ
+
+        """
+        self._target_exchange = exchange
+        self.target_url_start = self.target_url_start.replace('#$', self._target_exchange)
+
 
     def form_full_url(self):
         """ Form the url"""
@@ -117,10 +132,18 @@ class GoogleStockDataExtract(object):
             Some of names added the GS prefix to indicate resutls from google screener.
             Set to self.result_google_ext_df
         """
+        self.result_google_ext_df['PE'] = self.result_google_ext_df['PE'].str.replace(',','')
+        self.result_google_ext_df['PE'] = self.result_google_ext_df['PE'].astype('float')
+        self.result_google_ext_df['TotalDebtToEquityYear'] = self.result_google_ext_df['TotalDebtToEquityYear'].str.replace(',','')
+        self.result_google_ext_df['TotalDebtToEquityYear'] = self.result_google_ext_df['TotalDebtToEquityYear'].astype('float')
+        
         self.result_google_ext_df = self.result_google_ext_df.rename(columns={'CompanyName':'GS_CompanyName',
                                                                                  'AverageVolume':'GS_AverageVolume',
                                                                                  'Volume':'GS_Volume',
                                                                                  'AINTCOV':'Interest_coverage',
+                                                                                 'DividendYield':'TRAILINGANNUALDIVIDENDYIELDINPERCENT',
+                                                                                 'PE':'PERATIO', 'TotalDebtToEquityYear':'TotalDebtEquity',
+                                                                                  'PriceToBook':'PRICEBOOK','CurrentRatioYear':'CurrentRatio',
                                                                                 })
 
 if __name__ == '__main__':
@@ -129,8 +152,9 @@ if __name__ == '__main__':
 
     if choice == 2:
         hh = GoogleStockDataExtract()
+        hh.target_exchange = 'NASDAQ'
         hh.retrieve_all_stock_data()
         
         print hh.result_google_ext_df.head()
-        #hh.result_google_ext_df.to_csv(r'c:\data\temp.csv', index =False)
+        hh.result_google_ext_df.to_csv(r'c:\data\temp.csv', index =False)
 
