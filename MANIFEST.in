@@ -1,2 +1,3 @@
 include README.md
 include requirements.txt
+include google_screener_data_extract/googlescreen_url.txt
