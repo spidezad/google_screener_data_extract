@@ -30,8 +30,11 @@ TBD
 Example
 -------
 hh = GoogleStockDataExtract()
+
 hh.target_exchange = 'NASDAQ'
+
 hh.retrieve_all_stock_data()
 
 print hh.result_google_ext_df.head()
+
 hh.result_google_ext_df.to_csv(r'c:\data\temp.csv', index =False) #any save file name
